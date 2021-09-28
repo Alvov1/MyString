@@ -11,6 +11,7 @@ class MyString {
     char *ptr_;
 
     unsigned resize(unsigned new_size);
+    void size_set(unsigned size);
 
     /* --------------- Additional task #2 --------------- */
     class bad_from_string {
@@ -38,6 +39,8 @@ class MyString {
         /* Postfix decrement impl */
         iterator operator--(int);
 
+        iterator& operator=(const iterator& move);
+
         bool operator==(const iterator& it) const;
         bool operator!=(const iterator& it) const;
 
@@ -46,14 +49,14 @@ class MyString {
         std::pair<char*, char*> values() const;
     };
     class const_iterator : public iterator {
-        using iterator::iterator; /* Using iterator constructor for const_iterator. */
+        using iterator::iterator; /* Using iterator constructors for const_iterator. */
     public:
         const char& operator*() const;
     };
     class reverse_iterator {
+        char* base_;
     protected:
         char* ptr_;
-        char* base_;
     public:
         reverse_iterator();
         explicit reverse_iterator(char* ptr, unsigned index = 0);
@@ -64,6 +67,8 @@ class MyString {
         reverse_iterator & operator--();
         reverse_iterator operator--(int);
 
+        reverse_iterator& operator=(const reverse_iterator& move);
+
         bool operator==(const reverse_iterator& it) const;
         bool operator!=(const reverse_iterator& it) const;
 
@@ -72,17 +77,15 @@ class MyString {
         std::pair<char*, char*> values() const;
     };
     class const_reverse_iterator : public reverse_iterator {
-        using reverse_iterator::reverse_iterator; /* Using reverse_iterator constructor for const_reverse_iterator. */
+        using reverse_iterator::reverse_iterator; /* Using reverse_iterator constructors for const_reverse_iterator. */
     public:
         const char& operator*() const;
     };
 
-//    template <MyString::iterator, typename ...>
-//    auto call
     /* -------------------------------------------------- */
 public:
     MyString();
-    explicit MyString(const char* ptr);
+    MyString(const char* ptr);
     MyString(const std::initializer_list<char>& list);
     explicit MyString(const std::string& str);
     MyString(const char* ptr, unsigned count);
@@ -114,7 +117,7 @@ public:
     bool empty() const;
     unsigned capacity() const;
     unsigned shrink_to_fit();
-    unsigned clear(); /* Only erases characters. Capacity stays the same*/
+    void clear(); /* Only erases characters. Capacity stays the same*/
 
     unsigned insert(unsigned index, unsigned count, char sym);
     unsigned insert(unsigned index, const char* ptr);
@@ -122,15 +125,7 @@ public:
     unsigned insert(unsigned index, const std::string& str);
     unsigned insert(unsigned index, const std::string& str, unsigned count);
 
-    unsigned insert(MyString::iterator it, unsigned count, char sym);
-    unsigned insert(MyString::iterator it, const char* ptr);
-    unsigned insert(MyString::iterator it, const char* ptr, unsigned count);
-    unsigned insert(MyString::iterator it, const std::string& str);
-    unsigned insert(MyString::iterator it, const std::string& str, unsigned count);
-
     unsigned erase(unsigned index, unsigned count);
-
-    unsigned erase(MyString::iterator it, unsigned count);
 
     unsigned append(unsigned count, char sym);
     unsigned append(const char* ptr);
@@ -141,14 +136,8 @@ public:
     unsigned replace(unsigned index, unsigned count, const char* ptr);
     unsigned replace(unsigned index, unsigned count, const std::string& str);
 
-    unsigned replace(MyString::iterator it, unsigned count, const char* ptr);
-    unsigned replace(MyString::iterator it, unsigned count, const std::string& str);
-
     MyString substr(unsigned index);
     MyString substr(unsigned index, unsigned count);
-
-    MyString substr(MyString::iterator it);
-    MyString substr(MyString::iterator it, unsigned count);
 
     int find(const char* ptr) const;
     int find(const char* ptr, unsigned index) const;
@@ -179,6 +168,20 @@ public:
 
     const_reverse_iterator rcbegin() const;
     const_reverse_iterator rcend() const;
+
+    unsigned insert(MyString::iterator &it, unsigned count, char sym);
+    unsigned insert(MyString::iterator &it, const char* ptr);
+    unsigned insert(MyString::iterator &it, const char* ptr, unsigned count);
+    unsigned insert(MyString::iterator &it, const std::string& str);
+    unsigned insert(MyString::iterator &it, const std::string& str, unsigned count);
+
+    unsigned erase(MyString::iterator &it, unsigned count);
+
+    unsigned replace(MyString::iterator &it, unsigned count, const char* ptr);
+    unsigned replace(MyString::iterator &it, unsigned count, const std::string& str);
+
+    MyString substr(MyString::iterator &it);
+    MyString substr(MyString::iterator &it, unsigned count);
     /* -------------------------------------------------- */
 };
 

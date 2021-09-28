@@ -11,26 +11,24 @@ MyString::MyString(const std::initializer_list<char>& list) : size_(0), capacity
         for (char i : list)
             ptr_[size_++] = i;
         ptr_[size_] = 0;
-    }
+    } else throw std::invalid_argument("Initializer list is empty");
 }
 MyString::MyString(const char* ptr, unsigned int count) : size_(0), capacity_(0), ptr_(nullptr){
-    if(ptr != nullptr && (count != 0 || strlen(ptr) != 0)) {
-        size_ = (count < strlen(ptr) ? count : strlen(ptr));
-        capacity_ = size_ + 1;
-        ptr_ = new char[capacity_];
-        strncpy(ptr_, ptr, size_);
-        ptr_[size_] = 0;
-    }
+    if(ptr == nullptr || count > strlen(ptr))
+        throw std::invalid_argument("Char pointer is not long enough");
+    this->size_set(count);
+    ptr_ = new char[capacity_];
+    strncpy(ptr_, ptr, size_);
+    ptr_[size_] = 0;
 }
 MyString::MyString(unsigned int count, char sym) : size_(0), capacity_(0), ptr_(nullptr) {
     if(sym != static_cast<char>(0)){
-        size_ = count;
-        capacity_ = size_ + 1;
+        this->size_set(count);
         ptr_ = new char[capacity_];
         for (auto i = 0; i < size_; ++i)
             ptr_[i] = sym;
         ptr_[size_] = 0;
-    }
+    } else throw std::invalid_argument("Invalid character");
 }
 
 MyString MyString::operator+(const char* ptr) {
@@ -62,8 +60,7 @@ MyString MyString::operator+=(const std::string& str) {
 }
 MyString& MyString::operator=(const char* ptr) {
     if(ptr != nullptr && strlen(ptr) != 0) {
-        size_ = strlen(ptr);
-        capacity_ = size_ + 1;
+        this->size_set(strlen(ptr));
         delete[] ptr_;
         ptr_ = new char[capacity_];
         strncpy(ptr_, ptr, size_);
@@ -162,11 +159,10 @@ unsigned MyString::shrink_to_fit() {
     }
     else return 1;
 }
-unsigned MyString::clear() {
+void MyString::clear() {
     size_ = 0;
     if (ptr_ != nullptr)
         ptr_[0] = 0;
-    return 0;
 }
 
 std::ostream& operator<<(std::ostream& os, const MyString& str) {
@@ -218,8 +214,7 @@ unsigned MyString::insert(unsigned int index, const char* ptr, unsigned int coun
             ptr_ = temp;
             return size_;
         } else throw std::out_of_range("Index value is greater than size of the string");
-    }
-    else return 1;
+    } else return 1;
 }
 unsigned MyString::insert(unsigned int index, const char* ptr) {
     if(ptr != nullptr)
@@ -288,8 +283,9 @@ unsigned MyString::append(const std::string& str, unsigned int index, unsigned i
     return this->append(str.c_str(), index, count);
 }
 
+/* Index - starting position in string; Count - number of characters in STRING to replace. */
 unsigned MyString::replace(unsigned int index, unsigned int count, const char* ptr) {
-    if (index >= size_ || index + count >= size_)
+    if (index >= size_ || index + count > size_)
         throw std::out_of_range("String is not long enough");
     if (ptr == nullptr)
         return -1;
@@ -348,10 +344,13 @@ unsigned MyString::resize(unsigned int new_size) {
     else return 1;
 }
 
+void MyString::size_set(unsigned int size) {
+    size_ = size;
+    capacity_ = size + 1;
+}
+
 MyString::~MyString() {
     delete[] ptr_;
-    size_ = 0;
-    capacity_ = 0;
 }
 /* --------------- Additional task #2 --------------- */
 MyString::bad_from_string::bad_from_string(const char* str) : info(str) {}
@@ -613,6 +612,14 @@ std::pair<char *, char *> MyString::iterator::values() const {
     return std::pair<char *, char *>(ptr_, base_);
 }
 
+MyString::iterator &MyString::iterator::operator=(const iterator& move) {
+    if(this != &move){
+        base_ = move.base_;
+        ptr_ = move.ptr_;
+    }
+    return *this;
+}
+
 MyString::iterator MyString::begin() const {
     return MyString::iterator(ptr_);
 }
@@ -708,96 +715,95 @@ MyString::const_reverse_iterator MyString::rcend() const {
 }
 
 /* ------ Functions overloading with iterators ------ */
-unsigned MyString::insert(MyString::iterator it, unsigned int count, char sym) {
+unsigned MyString::insert(MyString::iterator &it, unsigned int count, char sym) {
     auto pair = it.values();
     if(pair.second != ptr_)
         throw std::logic_error("Iterator is based on different string");
-    if(pair.first != nullptr && *(pair.first) != 0)
-        return this->insert(pair.first - ptr_, count, sym);
-    else
+    if(pair.first != nullptr && *(pair.first) != 0){
+        auto index = pair.first - ptr_;
+        auto value = this->insert(index, count, sym);
+        it = iterator(ptr_, index); /* Reassigning iterator cause string buffer has probably been changed */
+        return value;
+    } else
         throw std::out_of_range("Iterator is pointing out of the string");
 }
-unsigned MyString::insert(MyString::iterator it, const char *ptr) {
+unsigned MyString::insert(MyString::iterator &it, const char *ptr) {
+    if(ptr != nullptr)
+        return this->insert(it, ptr, strlen(ptr));
+    else
+        return 1;
+}
+unsigned MyString::insert(MyString::iterator &it, const char *ptr, unsigned int count) {
     auto pair = it.values();
     if(pair.second != ptr_)
         throw std::logic_error("Iterator is based on different string");
-    if(pair.first != nullptr && *(pair.first) != 0)
-        return this->insert(pair.first - ptr_, ptr);
-    else
+    if(pair.first != nullptr && *(pair.first) != 0){
+        auto index = pair.first - ptr_;
+        auto value = this->insert(index, ptr, count);
+        it = iterator(ptr_, index); /* Reassigning iterator cause string buffer has probably been changed */
+        return value;
+    } else
         throw std::out_of_range("Iterator is pointing out of the string");
 }
-unsigned MyString::insert(MyString::iterator it, const char *ptr, unsigned int count) {
-    auto pair = it.values();
-    if(pair.second != ptr_)
-        throw std::logic_error("Iterator is based on different string");
-    if(pair.first != nullptr && *(pair.first) != 0)
-        return this->insert(pair.first - ptr_, ptr, count);
+unsigned MyString::insert(MyString::iterator &it, const std::string &str) {
+    if(str.c_str() != nullptr)
+        return this->insert(it, str.c_str(), strlen(str.c_str()));
     else
-        throw std::out_of_range("Iterator is pointing out of the string");
+        return 1;
 }
-unsigned MyString::insert(MyString::iterator it, const std::string &str) {
-    auto pair = it.values();
-    if(pair.second != ptr_)
-        throw std::logic_error("Iterator is based on different string");
-    if(pair.first != nullptr && *(pair.first) != 0)
-        return this->insert(pair.first - ptr_, str);
+unsigned MyString::insert(MyString::iterator &it, const std::string &str, unsigned int count) {
+    if(str.c_str() != nullptr)
+        return this->insert(it, str.c_str(), count);
     else
-        throw std::out_of_range("Iterator is pointing out of the string");
+        return 1;
 }
-unsigned MyString::insert(MyString::iterator it, const std::string &str, unsigned int count) {
+
+unsigned MyString::erase(MyString::iterator &it, unsigned int count) {
     auto pair = it.values();
     if(pair.second != ptr_)
         throw std::logic_error("Iterator is based on different string");
-    if(pair.first != nullptr && *(pair.first) != 0)
-        return this->insert(pair.first - ptr_, str, count);
-    else
+    if(pair.first != nullptr && *(pair.first) != 0) {
+        auto index = pair.first - ptr_;
+        auto value = this->erase(index, count);
+        it = iterator(ptr_, index); /* Reassigning iterator cause string buffer has probably been changed */
+        return value;
+    } else
         throw std::out_of_range("Iterator is pointing out of the string");
 }
 
-unsigned MyString::erase(MyString::iterator it, unsigned int count) {
+unsigned MyString::replace(MyString::iterator &it, unsigned int count, const char *ptr) {
     auto pair = it.values();
     if(pair.second != ptr_)
         throw std::logic_error("Iterator is based on different string");
-    if(pair.first != nullptr && *(pair.first) != 0)
-        return this->erase(pair.first - ptr_, count);
-    else
+    if(pair.first != nullptr && *(pair.first) != 0) {
+        auto index = pair.first - ptr_;
+        auto value = this->replace(index, count, ptr);
+        it = iterator(ptr_, index); /* Reassigning iterator cause string buffer has probably been changed */
+        return value;
+    } else
         throw std::out_of_range("Iterator is pointing out of the string");
+}
+unsigned MyString::replace(MyString::iterator &it, unsigned int count, const std::string &str) {
+    return this->replace(it, count, str.c_str());
 }
 
-unsigned MyString::replace(MyString::iterator it, unsigned int count, const char *ptr) {
-    auto pair = it.values();
-    if(pair.second != ptr_)
-        throw std::logic_error("Iterator is based on different string");
-    if(pair.first != nullptr && *(pair.first) != 0)
-        return this->replace(pair.first - ptr_, count, ptr);
-    else
-        throw std::out_of_range("Iterator is pointing out of the string");
-}
-unsigned MyString::replace(MyString::iterator it, unsigned int count, const std::string &str) {
-    auto pair = it.values();
-    if(pair.second != ptr_)
-        throw std::logic_error("Iterator is based on different string");
-    if(pair.first != nullptr && *(pair.first) != 0)
-        return this->replace(pair.first - ptr_, count, str);
-    else
-        throw std::out_of_range("Iterator is pointing out of the string");
-}
-
-MyString MyString::substr(MyString::iterator it) {
-    auto pair = it.values();
-    if(pair.second != ptr_)
-        throw std::logic_error("Iterator is based on different string");
-    if(pair.first != nullptr && *(pair.first) != 0)
-        return this->substr(pair.first - ptr_);
-    else
-        throw std::out_of_range("Iterator is pointing out of the string");
-}
-MyString MyString::substr(MyString::iterator it, unsigned int count) {
+MyString MyString::substr(MyString::iterator &it, unsigned int count) {
     auto pair = it.values();
     if(pair.second != ptr_)
         throw std::logic_error("Iterator is based on different string");
     if(pair.first != nullptr && *(pair.first) != 0)
         return this->substr(pair.first - ptr_, count);
+    else
+        throw std::out_of_range("Iterator is pointing out of the string");
+}
+MyString MyString::substr(MyString::iterator &it) {
+    /* Required to calculate the COUNT number.
+     * So, this function could not be simply passed into MyString::substr(iterator, unsigned). */
+    auto pair = it.values();
+    if(pair.second != ptr_)
+        throw std::logic_error("Iterator is based on different string");
+    if(pair.first != nullptr && *(pair.first) != 0)
+        return this->substr(pair.first - ptr_);
     else
         throw std::out_of_range("Iterator is pointing out of the string");
 }
