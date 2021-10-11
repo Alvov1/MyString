@@ -10,8 +10,8 @@ class MyString {
     unsigned capacity_;
     char *ptr_;
 
-    unsigned resize(unsigned new_size);
-    void size_set(unsigned size);
+    /* Allocates new space of memory in string. Previous buffer gets lost. */
+    unsigned realloc(unsigned size);
 
     /* --------------- Additional task #2 --------------- */
     class bad_from_string {
@@ -143,6 +143,9 @@ public:
     int find(const char* ptr, unsigned index) const;
     int find(const std::string& str) const;
     int find(const std::string& str, unsigned index) const;
+
+    /* Allocates new space of memory in the string and copies previous buffer. */
+    unsigned reserve(unsigned new_size);
 
     ~MyString();
 
